@@ -25,7 +25,9 @@ urlpatterns = [
     path('movies/', include('movies.urls')),
     path('accounts/', include('accounts.urls')),
     path('cart/', include('cart.urls')),
+    # path('hidden_movies', include('hidden_movies.urls')),
 ]
 
-urlpatterns += static(settings.MEDIA_URL,
-    document_root=settings.MEDIA_ROOT)
+if settings.DEBUG:
+    # urlpatterns += static(settings.STATIC_URL, document_root=settings.STATICFILES_DIRS[0])
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

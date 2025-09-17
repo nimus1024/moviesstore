@@ -33,6 +33,10 @@
             <a href="{% url 'movies.show' id=movie.id %}" class="btn bg-dark text-white">
               {{ movie.name }}
             </a>
+
+            {% if user.is_authenticated %}
+              <a href="{% url 'movies.hide' movie.id %}" class="btn btn-outline-secondary btn-sm">Hide Movie</a>
+            {% endif %}
           </div>
         </div>
       </div>

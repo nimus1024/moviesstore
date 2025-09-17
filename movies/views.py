@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from .models import Movie, Review
+from .models import Movie, Review, HiddenMovie
 from django.contrib.auth.decorators import login_required
 
 def index(request):
@@ -9,9 +9,14 @@ def index(request):
     else:
         movies = Movie.objects.all()
 
+    if request.user.is_authenticated:
+        hidden_movie_ids = HiddenMovie.objects.filter(user=request.user).values_list('movie_id', flat=True)
+        movies = movies.exclude(id__in=hidden_movie_ids)
+        
     template_data = {}
     template_data['title'] = 'Movies'
     template_data['movies'] = movies
+    template_data['search_term'] = search_term  # ✅ add this so template can keep the search value
     return render(request, 'movies/index.html', {'template_data': template_data})
 
 def show(request, id):
@@ -61,3 +66,24 @@ def delete_review(request, id, review_id):
     review = get_object_or_404(Review, id=review_id, user=request.user)
     review.delete()
     return redirect('movies.show', id=id)
+
+@login_required
+def hide_movie(request, id):
+    movie = get_object_or_404(Movie, id=id)
+    HiddenMovie.objects.get_or_create(user=request.user, movie=movie)
+    return redirect('movies.index')
+
+@login_required
+def hidden_movies(request):
+    hidden = HiddenMovie.objects.filter(user=request.user)
+    template_data = {
+        'title': 'Hidden Movies',
+        'hidden_movies': [h.movie for h in hidden]
+    }
+    return render(request, 'movies/hidden.html', {'template_data': template_data})
+
+@login_required
+def unhide_movie(request, id):
+    hidden = get_object_or_404(HiddenMovie, user=request.user, movie_id=id)
+    hidden.delete()
+    return redirect('movies.hidden')
