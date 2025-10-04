@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from .models import Movie, Review, HiddenMovie
+from .models import Movie, Review, HiddenMovie, MoviePetition, PetitionVote 
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 
 def index(request):
     search_term = request.GET.get('search')
@@ -87,3 +88,91 @@ def unhide_movie(request, id):
     hidden = get_object_or_404(HiddenMovie, user=request.user, movie_id=id)
     hidden.delete()
     return redirect('movies.hidden')
+
+# Your existing views stay the same...
+# (index, show, create_review, edit_review, delete_review, hide_movie, hidden_movies, unhide_movie)
+
+# Add these new views at the bottom:
+
+def petitions_list(request):
+    """Display all movie petitions, sorted by vote count"""
+    petitions = MoviePetition.objects.filter(is_approved=False, is_rejected=False)
+    
+    # Add vote count to each petition for sorting
+    petitions_with_votes = []
+    for petition in petitions:
+        petition.vote_count = petition.get_vote_count()
+        petition.user_voted = petition.user_has_voted(request.user)
+        petitions_with_votes.append(petition)
+    
+    # Sort by vote count (highest first)
+    petitions_with_votes.sort(key=lambda x: x.vote_count, reverse=True)
+    
+    template_data = {
+        'title': 'Movie Petitions',
+        'petitions': petitions_with_votes
+    }
+    return render(request, 'movies/petitions_list.html', {'template_data': template_data})
+
+
+@login_required
+def create_petition(request):
+    """Allow users to create a new movie petition"""
+    if request.method == 'GET':
+        template_data = {
+            'title': 'Request a Movie'
+        }
+        return render(request, 'movies/create_petition.html', {'template_data': template_data})
+    
+    elif request.method == 'POST':
+        movie_title = request.POST.get('movie_title', '').strip()
+        description = request.POST.get('description', '').strip()
+        
+        if not movie_title or not description:
+            messages.error(request, 'Both movie title and description are required.')
+            return redirect('movies.create_petition')
+        
+        # Create the petition
+        petition = MoviePetition()
+        petition.movie_title = movie_title
+        petition.description = description
+        petition.petitioner = request.user
+        petition.save()
+        
+        messages.success(request, f'Your petition for "{movie_title}" has been created!')
+        return redirect('movies.petitions_list')
+
+
+@login_required
+def vote_petition(request, petition_id):
+    """Allow users to vote for a movie petition"""
+    petition = get_object_or_404(MoviePetition, id=petition_id)
+    
+    # Check if user already voted
+    if petition.user_has_voted(request.user):
+        messages.info(request, 'You have already voted for this petition.')
+    else:
+        # Create the vote
+        vote = PetitionVote()
+        vote.petition = petition
+        vote.user = request.user
+        vote.save()
+        
+        messages.success(request, f'Your vote for "{petition.movie_title}" has been recorded!')
+    
+    return redirect('movies.petitions_list')
+
+
+@login_required
+def unvote_petition(request, petition_id):
+    """Allow users to remove their vote from a petition"""
+    petition = get_object_or_404(MoviePetition, id=petition_id)
+    
+    try:
+        vote = PetitionVote.objects.get(petition=petition, user=request.user)
+        vote.delete()
+        messages.success(request, f'Your vote for "{petition.movie_title}" has been removed.')
+    except PetitionVote.DoesNotExist:
+        messages.info(request, 'You have not voted for this petition.')
+    
+    return redirect('movies.petitions_list')
