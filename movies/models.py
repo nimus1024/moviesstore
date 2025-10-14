@@ -69,3 +69,8 @@ class PetitionVote(models.Model):
     
     def __str__(self):
         return f"{self.user.username} voted for {self.petition.movie_title}"
+    
+class Purchase(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    movie = models.ForeignKey(Movie, on_delete=models.CASCADE)
+    purchase_date = models.DateTimeField(auto_now_add=True)

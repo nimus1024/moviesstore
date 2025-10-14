@@ -33,7 +33,9 @@
             <a href="{% url 'movies.petitions_list' %}" class="nav-link">Movie Requests</a>
             <a class="nav-link" href="{% url 'accounts.orders' %}">Orders</a>
             <a class="nav-link" href="{% url 'accounts.logout' %}">Logout ({{ user.username }})</a>
-
+            {% if user.is_staff %}
+            <a href="{% url 'movies.top_customer' %}" class="nav-link">Top Customer</a>
+            {% endif %}
             {% else %}
             <a class="nav-link" href="{% url 'accounts.login' %}">Login</a>
             <a class="nav-link" href="{% url 'accounts.signup' %}">Sign Up</a>

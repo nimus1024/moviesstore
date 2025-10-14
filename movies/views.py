@@ -1,7 +1,10 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from .models import Movie, Review, HiddenMovie, MoviePetition, PetitionVote 
+from .models import Movie, Review, HiddenMovie, MoviePetition, PetitionVote, Purchase
 from django.contrib.auth.decorators import login_required
+from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import messages
+from django.db.models import Count, Sum
+from cart.models import Item 
 
 def index(request):
     search_term = request.GET.get('search')
@@ -17,7 +20,7 @@ def index(request):
     template_data = {}
     template_data['title'] = 'Movies'
     template_data['movies'] = movies
-    template_data['search_term'] = search_term  # ✅ add this so template can keep the search value
+    template_data['search_term'] = search_term 
     return render(request, 'movies/index.html', {'template_data': template_data})
 
 def show(request, id):
@@ -176,3 +179,15 @@ def unvote_petition(request, petition_id):
         messages.info(request, 'You have not voted for this petition.')
     
     return redirect('movies.petitions_list')
+
+@staff_member_required
+def top_customer_view(request):
+    top_customer = Item.objects.values('order__user__username').annotate(
+        movie_count=Sum('quantity')  # Sum of quantities purchased
+    ).order_by('-movie_count').first()
+    
+    template_data = {
+        'title': 'Top Customer',
+        'top_customer': top_customer
+    }
+    return render(request, 'movies/top_customer.html', {'template_data': template_data})
